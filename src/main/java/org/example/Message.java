@@ -5,18 +5,18 @@ import java.util.Objects;
 public class Message {
     private String messageID;
 
-    private enum state {DISABLE, ENABLE, DONE} ;
+    public static enum state {DISABLE, ENABLE, DONE} ;
     private String sendMsgID;
     private String receiveMsgID;
     private String fireflyTranID;
     private state msgState;
 
-    public Message(String messageID, String sendMsgID, String receiveMsgID, String fireflyTranID, String msgState) {
+    public Message(String messageID, String sendMsgID, String receiveMsgID, String fireflyTranID, state msgState) {
         this.messageID = messageID;
         this.sendMsgID = sendMsgID;
         this.receiveMsgID = receiveMsgID;
         this.fireflyTranID = fireflyTranID;
-        this.msgState = state.valueOf(msgState);
+        this.msgState = msgState;
     }
 
     public String getMessageID() {
