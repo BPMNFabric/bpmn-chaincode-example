@@ -1,6 +1,5 @@
 package org.example;
 
-import org.camunda.bpm.model.bpmn.instance.Gateway;
 import org.hyperledger.fabric.contract.Context;
 import org.hyperledger.fabric.contract.ContractInterface;
 import org.hyperledger.fabric.contract.annotation.Contact;
@@ -126,7 +125,7 @@ public class MessageTransfer implements ContractInterface {
     }
 
     @Transaction(intent = Transaction.TYPE.SUBMIT)
-    public void Msg_Message_1rnq4x3_Complete(final Context ctx) {
+    public void Msg_Message_1rnq4x3_Complete(final Context ctx) {       //还可补充消息中的参数
         ChaincodeStub stub = ctx.getStub();
         Message msg = ReadMsg(ctx, "Message_1rnq4x3");
 
@@ -141,10 +140,12 @@ public class MessageTransfer implements ContractInterface {
         String sortedJson = genson.serialize(msg);
         stub.putStringState("Message_1rnq4x3", sortedJson);
 
-        Message  msg2 = ReadMsg(ctx, "Message_0plbqmg");
-        msg2.setMsgState(Message.state.ENABLE);
-        String sortedJson2 = genson.serialize(msg2);
-        stub.putStringState("Message_0plbqmg", sortedJson2);
+//        Message  msg2 = ReadMsg(ctx, "Message_0plbqmg");
+//        msg2.setMsgState(Message.state.ENABLE);
+//        String sortedJson2 = genson.serialize(msg2);
+//        stub.putStringState("Message_0plbqmg", sortedJson2);
+        //下一个为网关
+        Gateway_Gateway_197f4ys_Complete(ctx);
     }
 
     @Transaction(intent = Transaction.TYPE.SUBMIT)
@@ -163,6 +164,18 @@ public class MessageTransfer implements ContractInterface {
         String sortedJson = genson.serialize(msg);
         stub.putStringState("Message_0plbqmg", sortedJson);
 
+    }
+
+    //不添加默认查询
+    @Transaction(intent = Transaction.TYPE.EVALUATE)
+    private void Gateway_Gateway_197f4ys_Complete(final Context ctx) {
+        //exclusive 参数择路
+
+        //一个结束事件
+
+        //
+
+        Msg_Message_0plbqmg_Complete(ctx);
     }
 
 
