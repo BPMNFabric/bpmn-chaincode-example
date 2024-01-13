@@ -4,14 +4,12 @@ import java.util.Objects;
 
 public class Message {
     private String messageID;
-
-    public static enum state {DISABLE, ENABLE, DONE} ;
     private String sendMsgID;
     private String receiveMsgID;
     private String fireflyTranID;
-    private state msgState;
+    private ElementState msgState;
 
-    public Message(String messageID, String sendMsgID, String receiveMsgID, String fireflyTranID, state msgState) {
+    public Message(String messageID, String sendMsgID, String receiveMsgID, String fireflyTranID, ElementState msgState) {
         this.messageID = messageID;
         this.sendMsgID = sendMsgID;
         this.receiveMsgID = receiveMsgID;
@@ -51,11 +49,11 @@ public class Message {
         this.fireflyTranID = fireflyTranID;
     }
 
-    public state getMsgState() {
+    public ElementState getMsgState() {
         return msgState;
     }
 
-    public void setMsgState(state msgState) {
+    public void setMsgState(ElementState msgState) {
         this.msgState = msgState;
     }
 

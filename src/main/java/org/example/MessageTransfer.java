@@ -48,16 +48,16 @@ public class MessageTransfer implements ContractInterface {
     public void initLedger(final Context ctx) {
         ChaincodeStub stub = ctx.getStub();
 
-        CreateMessage(ctx, "Message_1pam53q", "", "", "",Message.state.ENABLE);
-        CreateMessage(ctx, "Message_1rnq4x3", "", "", "",Message.state.DISABLE);
-        CreateMessage(ctx, "Message_0plbqmg", "", "", "",Message.state.DISABLE);
+        CreateMessage(ctx, "Message_1pam53q", "", "", "",ElementState.ENABLE);
+        CreateMessage(ctx, "Message_1rnq4x3", "", "", "",ElementState.DISABLE);
+        CreateMessage(ctx, "Message_0plbqmg", "", "", "",ElementState.DISABLE);
 
         Msg_Message_1pam53q_Complete(ctx);
     }
 
     @Transaction(intent = Transaction.TYPE.SUBMIT)
     public Message CreateMessage(final Context ctx,  final String messageID, final String sendMsgID, final String receiveMsgID,
-                              final String fireflyTranID, final Message.state msgState) {
+                              final String fireflyTranID, final ElementState msgState) {
         ChaincodeStub stub = ctx.getStub();
 
         if (MsgExists(ctx, messageID)) {
@@ -105,19 +105,19 @@ public class MessageTransfer implements ContractInterface {
         ChaincodeStub stub = ctx.getStub();
         Message msg = ReadMsg(ctx, "Message_1pam53q");
 
-        if (msg.getMsgState() != Message.state.ENABLE) {
+        if (msg.getMsgState() != ElementState.ENABLE) {
             String errorMessage = String.format("Msg state %s does not allowed", msg.getMessageID());
             System.out.println(errorMessage);
             throw new ChaincodeException(errorMessage, MsgTransferErrors.MESSAGE_TRANSFER_FAILED.toString());
         }
 
-        msg.setMsgState(Message.state.DONE);
+        msg.setMsgState(ElementState.DONE);
         msg.setFireflyTranID(mockFireflyID);
         String sortedJson = genson.serialize(msg);
         stub.putStringState("Message_1pam53q", sortedJson);
 
         Message  msg2 = ReadMsg(ctx, "Message_1rnq4x3");
-        msg2.setMsgState(Message.state.ENABLE);
+        msg2.setMsgState(ElementState.ENABLE);
         String sortedJson2 = genson.serialize(msg2);
         stub.putStringState("Message_1rnq4x3", sortedJson2);
 
@@ -129,13 +129,13 @@ public class MessageTransfer implements ContractInterface {
         ChaincodeStub stub = ctx.getStub();
         Message msg = ReadMsg(ctx, "Message_1rnq4x3");
 
-        if (msg.getMsgState() != Message.state.ENABLE) {
+        if (msg.getMsgState() != ElementState.ENABLE) {
             String errorMessage = String.format("Msg state %s does not allowed", msg.getMessageID());
             System.out.println(errorMessage);
             throw new ChaincodeException(errorMessage, MsgTransferErrors.MESSAGE_TRANSFER_FAILED.toString());
         }
 
-        msg.setMsgState(Message.state.DONE);
+        msg.setMsgState(ElementState.DONE);
         msg.setFireflyTranID(mockFireflyID);
         String sortedJson = genson.serialize(msg);
         stub.putStringState("Message_1rnq4x3", sortedJson);
@@ -153,13 +153,13 @@ public class MessageTransfer implements ContractInterface {
         ChaincodeStub stub = ctx.getStub();
         Message msg = ReadMsg(ctx, "Message_0plbqmg");
 
-        if (msg.getMsgState() != Message.state.ENABLE) {
+        if (msg.getMsgState() != ElementState.ENABLE) {
             String errorMessage = String.format("Msg state %s does not allowed", msg.getMessageID());
             System.out.println(errorMessage);
             throw new ChaincodeException(errorMessage, MsgTransferErrors.MESSAGE_TRANSFER_FAILED.toString());
         }
 
-        msg.setMsgState(Message.state.DONE);
+        msg.setMsgState(ElementState.DONE);
         msg.setFireflyTranID(mockFireflyID);
         String sortedJson = genson.serialize(msg);
         stub.putStringState("Message_0plbqmg", sortedJson);
