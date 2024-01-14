@@ -1,5 +1,7 @@
 package org.example;
 
+import org.example.model.ElementState;
+
 import java.util.Objects;
 
 public class Message {

@@ -1,5 +1,7 @@
 package org.example;
 
+import org.example.model.ElementState;
+import org.example.model.StateMemory;
 import org.hyperledger.fabric.contract.Context;
 import org.hyperledger.fabric.contract.ContractInterface;
 import org.hyperledger.fabric.contract.annotation.Contact;
@@ -48,7 +50,7 @@ public class MessageTransfer implements ContractInterface {
     public void initLedger(final Context ctx) {
         ChaincodeStub stub = ctx.getStub();
 
-        CreateMessage(ctx, "Message_1pam53q", "", "", "",ElementState.ENABLE);
+        CreateMessage(ctx, "Message_1pam53q", "", "", "", ElementState.ENABLE);
         CreateMessage(ctx, "Message_1rnq4x3", "", "", "",ElementState.DISABLE);
         CreateMessage(ctx, "Message_0plbqmg", "", "", "",ElementState.DISABLE);
 
@@ -169,14 +171,18 @@ public class MessageTransfer implements ContractInterface {
     //不添加默认查询
     @Transaction(intent = Transaction.TYPE.EVALUATE)
     private void Gateway_Gateway_197f4ys_Complete(final Context ctx) {
-        //exclusive 参数择路
+        ChaincodeStub stub = ctx.getStub();
 
+        //exclusive 参数择路
+        Message  msg2 = ReadMsg(ctx, "Message_0plbqmg");
+        msg2.setMsgState(ElementState.ENABLE);
+        String sortedJson2 = genson.serialize(msg2);
+        stub.putStringState("Message_0plbqmg", sortedJson2);
         //一个结束事件
 
         //
 
         Msg_Message_0plbqmg_Complete(ctx);
     }
-
 
 }
