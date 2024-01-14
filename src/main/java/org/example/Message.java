@@ -6,15 +6,15 @@ import java.util.Objects;
 
 public class Message {
     private String messageID;
-    private String sendMsgID;
-    private String receiveMsgID;
+    private String sendMspID;
+    private String receiveMspID;
     private String fireflyTranID;
     private ElementState msgState;
 
-    public Message(String messageID, String sendMsgID, String receiveMsgID, String fireflyTranID, ElementState msgState) {
+    public Message(String messageID, String sendMspID, String receiveMspID, String fireflyTranID, ElementState msgState) {
         this.messageID = messageID;
-        this.sendMsgID = sendMsgID;
-        this.receiveMsgID = receiveMsgID;
+        this.sendMspID = sendMspID;
+        this.receiveMspID = receiveMspID;
         this.fireflyTranID = fireflyTranID;
         this.msgState = msgState;
     }
@@ -27,20 +27,20 @@ public class Message {
         this.messageID = messageID;
     }
 
-    public String getSendMsgID() {
-        return sendMsgID;
+    public String getsendMspID() {
+        return sendMspID;
     }
 
-    public void setSendMsgID(String sendMsgID) {
-        this.sendMsgID = sendMsgID;
+    public void setsendMspID(String sendMspID) {
+        this.sendMspID = sendMspID;
     }
 
-    public String getReceiveMsgID() {
-        return receiveMsgID;
+    public String getreceiveMspID() {
+        return receiveMspID;
     }
 
-    public void setReceiveMsgID(String receiveMsgID) {
-        this.receiveMsgID = receiveMsgID;
+    public void setreceiveMspID(String receiveMspID) {
+        this.receiveMspID = receiveMspID;
     }
 
     public String getFireflyTranID() {
@@ -72,8 +72,8 @@ public class Message {
         Message other = (Message) obj;
 
         return Objects.deepEquals(
-                new String[] {getMessageID(), getSendMsgID(), getReceiveMsgID(), getFireflyTranID()},
-                new String[] {other.getMessageID(), other.getSendMsgID(), other.getReceiveMsgID(), other.getFireflyTranID()})
+                new String[] {getMessageID(), getsendMspID(), getreceiveMspID(), getFireflyTranID()},
+                new String[] {other.getMessageID(), other.getsendMspID(), other.getreceiveMspID(), other.getFireflyTranID()})
                 &&
                 Objects.deepEquals(
                         new int[] {getMsgState().ordinal()},
@@ -82,7 +82,7 @@ public class Message {
 
     @Override
     public int hashCode() {
-        return Objects.hash(Objects.hashCode(getMessageID() + getSendMsgID() + getReceiveMsgID() + getFireflyTranID()), Objects.hashCode(getMsgState().ordinal()));
+        return Objects.hash(Objects.hashCode(getMessageID() + getsendMspID() + getreceiveMspID() + getFireflyTranID()), Objects.hashCode(getMsgState().ordinal()));
     }
 
 
