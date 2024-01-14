@@ -1,6 +1,4 @@
-package org.example;
-
-import org.example.model.ElementState;
+package org.example.model;
 
 import java.util.Objects;
 

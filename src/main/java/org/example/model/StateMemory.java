@@ -1,100 +1,30 @@
 package org.example.model;
 
 public class StateMemory {
-    private String product = "";
-    private int price = 0;
-    private boolean accepted = false;
-    private Boolean reiterate = false;
-    private String motivation = "";
-    private String shipAddress = "";
-    private int amount = 0;
-    private String shipInfo = "";
-    private String invoiceInfo = "";
+    private boolean confirm;
+    private boolean cancel;
 
-
-    public StateMemory(String product, int price, Boolean accepted, Boolean reiterate, String motivation, String shipAddress, int amount, String shipInfo, String invoiceInfo) {
-        this.product = product;
-        this.price = price;
-        this.accepted = accepted;
-        this.reiterate = reiterate;
-        this.motivation = motivation;
-        this.shipAddress = shipAddress;
-        this.amount = amount;
-        this.shipInfo = shipInfo;
-        this.invoiceInfo = invoiceInfo;
+    public StateMemory() {
     }
 
-    public String getProduct() {
-        return product;
+    public StateMemory(boolean confirm, boolean cancel) {
+        this.confirm = confirm;
+        this.cancel = cancel;
     }
 
-    public void setProduct(String product) {
-        this.product = product;
+    public boolean isConfirm() {
+        return confirm;
     }
 
-    public int getPrice() {
-        return price;
+    public void setConfirm(boolean confirm) {
+        this.confirm = confirm;
     }
 
-    public void setPrice(int price) {
-        this.price = price;
+    public boolean isCancel() {
+        return cancel;
     }
 
-    public Boolean getAccepted() {
-        return accepted;
+    public void setCancel(boolean cancel) {
+        this.cancel = cancel;
     }
-
-    public void setAccepted(Boolean accepted) {
-        this.accepted = accepted;
-    }
-
-    public Boolean getReiterate() {
-        return reiterate;
-    }
-
-    public void setReiterate(Boolean reiterate) {
-        this.reiterate = reiterate;
-    }
-
-    public String getMotivation() {
-        return motivation;
-    }
-
-    public void setMotivation(String motivation) {
-        this.motivation = motivation;
-    }
-
-    public String getShipAddress() {
-        return shipAddress;
-    }
-
-    public void setShipAddress(String shipAddress) {
-        this.shipAddress = shipAddress;
-    }
-
-    public int getAmount() {
-        return amount;
-    }
-
-    public void setAmount(int amount) {
-        this.amount = amount;
-    }
-
-    public String getShipInfo() {
-        return shipInfo;
-    }
-
-    public void setShipInfo(String shipInfo) {
-        this.shipInfo = shipInfo;
-    }
-
-    public String getInvoiceInfo() {
-        return invoiceInfo;
-    }
-
-    public void setInvoiceInfo(String invoiceInfo) {
-        this.invoiceInfo = invoiceInfo;
-    }
-
-
 }
