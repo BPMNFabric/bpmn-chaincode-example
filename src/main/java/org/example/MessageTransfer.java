@@ -3,7 +3,7 @@ package org.example;
 import org.example.model.ElementState;
 import org.example.model.Gateway;
 import org.example.model.Message;
-import org.example.model.StateMemory;
+import org.example.StateMemory;
 import org.hyperledger.fabric.contract.Context;
 import org.hyperledger.fabric.contract.ContractInterface;
 import org.hyperledger.fabric.contract.annotation.Contact;
@@ -42,20 +42,27 @@ public class MessageTransfer implements ContractInterface {
         MESSAGE_TRANSFER_FAILED,
         GATEWAY_NOT_EXISTS,
         GATEWAY_NOT_FOUND,
-        GATEWAY_TRANSFER_FAILED
+        GATEWAY_TRANSFER_FAILED,
+        CHAINCODE_HAS_INITED
     }
 
-    public static String startID;
+    public Boolean isInited= false;
 
     private StateMemory currentMemory = new StateMemory();
-
-    private String mockFireflyID = "0x";     // mock firefly id
 
     @Transaction(intent = Transaction.TYPE.SUBMIT)
     public void initLedger(final Context ctx) {
         ChaincodeStub stub = ctx.getStub();
+        //Determines whether the chain code is initialized
+        if(isInited){
+            System.out.println("Chaincode Has Inited");
+            throw new ChaincodeException(errorMessage, MsgTransferErrors.CHAINCODE_HAS_INITED.toString());
+        }
+        isInited= true;
 
         CreateGateway(ctx,"ExclusiveGateway_0hs3ztq" , ElementState.ENABLE);
+        ExclusiveGateway_0hs3ztq(ctx);
+
         CreateGateway(ctx,"ExclusiveGateway_106je4z" , ElementState.DISABLE);
         CreateGateway(ctx,"EventBasedGateway_1fxpmyn" , ElementState.DISABLE);
         CreateGateway(ctx,"ExclusiveGateway_0nzwv7v" , ElementState.DISABLE);
@@ -71,12 +78,10 @@ public class MessageTransfer implements ContractInterface {
         CreateMessage(ctx, "Message_05isfw9", "", "", "",ElementState.DISABLE);
         CreateMessage(ctx, "Message_1joj7ca", "", "", "", ElementState.DISABLE);
         CreateMessage(ctx, "Message_1etcmvl", "", "", "", ElementState.DISABLE);
-
-        ExclusiveGateway_0hs3ztq(ctx);
     }
 
     @Transaction(intent = Transaction.TYPE.SUBMIT)
-    public Gateway CreateGateway(final Context ctx, final String gatewayID, final ElementState gatewayState) {
+    private Gateway CreateGateway(final Context ctx, final String gatewayID, final ElementState gatewayState) {
         ChaincodeStub stub = ctx.getStub();
 
         if (MsgExists(ctx, gatewayID)) {
@@ -94,7 +99,7 @@ public class MessageTransfer implements ContractInterface {
     }
 
     @Transaction(intent = Transaction.TYPE.SUBMIT)
-    public Message CreateMessage(final Context ctx, final String messageID, final String sendMspID, final String receiveMspID,
+    private Message CreateMessage(final Context ctx, final String messageID, final String sendMspID, final String receiveMspID,
                                  final String fireflyTranID, final ElementState msgState) {
         ChaincodeStub stub = ctx.getStub();
 
@@ -129,7 +134,7 @@ public class MessageTransfer implements ContractInterface {
 
 
     @Transaction(intent = Transaction.TYPE.SUBMIT)
-    public void ChangeMsgState(final Context ctx, final String messageID, ElementState msgState) {
+    private void ChangeMsgState(final Context ctx, final String messageID, ElementState msgState) {
         //only change state
         ChaincodeStub stub = ctx.getStub();
         Message  msg = ReadMsg(ctx, messageID);
@@ -140,7 +145,7 @@ public class MessageTransfer implements ContractInterface {
     }
 
     @Transaction(intent = Transaction.TYPE.SUBMIT)
-    public void ChangeGtwState(final Context ctx, final String gatewayID, ElementState gtwState) {
+    private void ChangeGtwState(final Context ctx, final String gatewayID, ElementState gtwState) {
         //only change state
         ChaincodeStub stub = ctx.getStub();
         Gateway  msg = ReadGtw(ctx, gatewayID);
@@ -177,8 +182,12 @@ public class MessageTransfer implements ContractInterface {
     //====================================================================================================================================================
 
     @Transaction(intent = Transaction.TYPE.SUBMIT)
-    public void Msg_Message_1pam53q_Complete(final Context ctx) {
+    public void Msg_Message_1pam53q_Complete(final Context ctx, String  fireflyTranID) {
         ChaincodeStub stub = ctx.getStub();
+        //TODO  待确认
+        ClientIdentity clientIdentity=ctx.getClientIdentity();
+        String mspID=clientIdentity.getMSPID();
+
         Message msg = ReadMsg(ctx, "Message_1pam53q");
 
         if (msg.getMsgState() != ElementState.ENABLE) {
@@ -188,7 +197,7 @@ public class MessageTransfer implements ContractInterface {
         }
 
         msg.setMsgState(ElementState.DONE);
-        msg.setFireflyTranID(mockFireflyID);
+        msg.setFireflyTranID(fireflyTranID);
         String sortedJson = genson.serialize(msg);
         stub.putStringState("Message_1pam53q", sortedJson);
 
