@@ -4,6 +4,7 @@ import org.example.model.ElementState;
 import org.example.model.Gateway;
 import org.example.model.Message;
 import org.example.model.StateMemory;
+import org.hyperledger.fabric.contract.ClientIdentity;
 import org.hyperledger.fabric.contract.Context;
 import org.hyperledger.fabric.contract.ContractInterface;
 import org.hyperledger.fabric.contract.annotation.Contact;
@@ -50,11 +51,14 @@ public class MessageTransfer implements ContractInterface {
 
     private StateMemory currentMemory = new StateMemory();
 
+    private String mockFireflyID = "0";
+
     @Transaction(intent = Transaction.TYPE.SUBMIT)
     public void initLedger(final Context ctx) {
         ChaincodeStub stub = ctx.getStub();
         //Determines whether the chain code is initialized
         if(isInited){
+            String errorMessage = String.format("Chaincode has not  been inited");
             System.out.println("Chaincode Has Inited");
             throw new ChaincodeException(errorMessage, MsgTransferErrors.CHAINCODE_HAS_INITED.toString());
         }
