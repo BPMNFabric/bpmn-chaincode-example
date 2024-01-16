@@ -3,7 +3,7 @@ package org.example;
 import org.example.model.ElementState;
 import org.example.model.Gateway;
 import org.example.model.Message;
-import org.example.StateMemory;
+import org.example.model.StateMemory;
 import org.hyperledger.fabric.contract.Context;
 import org.hyperledger.fabric.contract.ContractInterface;
 import org.hyperledger.fabric.contract.annotation.Contact;
