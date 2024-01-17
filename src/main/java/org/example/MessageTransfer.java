@@ -1,9 +1,7 @@
 package org.example;
 
-import org.example.model.ElementState;
-import org.example.model.Gateway;
-import org.example.model.Message;
-import org.example.model.StateMemory;
+import org.camunda.bpm.model.bpmn.instance.EndEvent;
+import org.example.model.*;
 import org.hyperledger.fabric.contract.ClientIdentity;
 import org.hyperledger.fabric.contract.Context;
 import org.hyperledger.fabric.contract.ContractInterface;
@@ -17,6 +15,8 @@ import org.hyperledger.fabric.shim.ChaincodeException;
 import org.hyperledger.fabric.shim.ChaincodeStub;
 
 import com.owlike.genson.Genson;
+
+import javax.swing.*;
 
 @Contract(
         name = "basic",
@@ -44,44 +44,55 @@ public class MessageTransfer implements ContractInterface {
         GATEWAY_NOT_EXISTS,
         GATEWAY_NOT_FOUND,
         GATEWAY_TRANSFER_FAILED,
-        CHAINCODE_HAS_INITED
+        CHAINCODE_HAS_INITED,
+        EVENT_TRANSFER_FAILED
     }
 
     public Boolean isInited= false;
 
     private StateMemory currentMemory = new StateMemory();
 
-    private String mockFireflyID = "0";
 
     @Transaction(intent = Transaction.TYPE.SUBMIT)
     public void initLedger(final Context ctx) {
         ChaincodeStub stub = ctx.getStub();
+
         //Determines whether the chain code is initialized
         if(isInited){
             String errorMessage = String.format("Chaincode has not  been inited");
             System.out.println("Chaincode Has Inited");
             throw new ChaincodeException(errorMessage, MsgTransferErrors.CHAINCODE_HAS_INITED.toString());
         }
-        isInited= true;
 
-        CreateGateway(ctx,"ExclusiveGateway_0hs3ztq" , ElementState.ENABLE);
-        ExclusiveGateway_0hs3ztq(ctx);
+        CreateActionEvent(ctx,"StartEvent_1jtgn3j",ElementState.ENABLE);
 
+        CreateGateway(ctx,"ExclusiveGateway_0hs3ztq" , ElementState.DISABLE);
         CreateGateway(ctx,"ExclusiveGateway_106je4z" , ElementState.DISABLE);
         CreateGateway(ctx,"EventBasedGateway_1fxpmyn" , ElementState.DISABLE);
         CreateGateway(ctx,"ExclusiveGateway_0nzwv7v" , ElementState.DISABLE);
 //        CreateGateway(ctx,"EndEvent_0366pfz" , ElementState.DISABLE);
 
-        CreateMessage(ctx, "Message_1em0ee4", "", "", "", ElementState.DISABLE);
-        CreateMessage(ctx, "Message_1nlagx2", "", "", "",ElementState.DISABLE);
-        CreateMessage(ctx, "Message_045i10y", "", "", "",ElementState.DISABLE);
-        CreateMessage(ctx, "Message_0r9lypd", "", "", "",ElementState.DISABLE);
-        CreateMessage(ctx, "Message_0o8eyir", "", "", "",ElementState.DISABLE);
-        CreateMessage(ctx, "Message_1xm9dxy", "", "", "",ElementState.DISABLE);
-        CreateMessage(ctx, "Message_1ljlm4g", "", "", "",ElementState.DISABLE);
-        CreateMessage(ctx, "Message_05isfw9", "", "", "",ElementState.DISABLE);
-        CreateMessage(ctx, "Message_1joj7ca", "", "", "", ElementState.DISABLE);
-        CreateMessage(ctx, "Message_1etcmvl", "", "", "", ElementState.DISABLE);
+//mspid    hotel:Participant_0sktaei       client:Participant_1080bkg
+        CreateMessage(ctx, "Message_045i10y", "Participant_1080bkg", "Participant_0sktaei", "", ElementState.DISABLE);    // Check_room(string date, uint bedrooms)"
+        CreateMessage(ctx, "Message_0r9lypd", "Participant_0sktaei", "Participant_1080bkg", "",ElementState.DISABLE);     //Give_availability(bool confirm)
+        CreateMessage(ctx, "Message_1em0ee4", "Participant_0sktaei", "Participant_1080bkg", "",ElementState.DISABLE);     //Price_quotation(uint quotation)
+        CreateMessage(ctx, "Message_1nlagx2", "Participant_1080bkg", "Participant_0sktaei", "",ElementState.DISABLE);     //Book_room(bool confirmation)
+        CreateMessage(ctx, "Message_0o8eyir", "Participant_1080bkg", "Participant_0sktaei", "",ElementState.DISABLE);     //payment0(address payable to)
+        CreateMessage(ctx, "Message_1ljlm4g", "Participant_0sktaei", "Participant_1080bkg", "",ElementState.DISABLE);     //Give_ID(string booking_id)
+        CreateMessage(ctx, "Message_0m9p3da", "Participant_1080bkg", "Participant_0sktaei", "",ElementState.DISABLE);     //cancel_order(bool cancel)
+        CreateMessage(ctx, "Message_1joj7ca", "Participant_1080bkg", "Participant_0sktaei", "",ElementState.DISABLE);     //ask_refund(string ID)
+        CreateMessage(ctx, "Message_1etcmvl", "Participant_0sktaei", "Participant_1080bkg", "", ElementState.DISABLE);    //payment1(address payable to)
+        CreateMessage(ctx, "Message_1xm9dxy", "Participant_1080bkg", "Participant_0sktaei", "", ElementState.DISABLE);    //Cancel_order(string motivation)
+
+        CreateActionEvent(ctx,"EndEvent_146eii4",ElementState.DISABLE);
+        CreateActionEvent(ctx,"EndEvent_08edp7f",ElementState.DISABLE);
+        CreateActionEvent(ctx,"EndEvent_0366pfz",ElementState.DISABLE);
+
+        isInited= true;
+        StartEvent_1jtgn3j( ctx);
+
+
+        stub.setEvent("initLedgerEvent", "Contract has been inited successfully".getBytes());
     }
 
     @Transaction(intent = Transaction.TYPE.SUBMIT)
@@ -100,6 +111,17 @@ public class MessageTransfer implements ContractInterface {
         stub.putStringState(gatewayID, sortedJson);
 
         return gtw;
+    }
+
+    @Transaction(intent = Transaction.TYPE.SUBMIT)
+    private ActionEvent CreateActionEvent(final Context ctx, final String eventID, final ElementState eventState){
+        ChaincodeStub stub = ctx.getStub();
+
+        ActionEvent actionEvent = new ActionEvent(eventID, eventState);
+        String sortedJson = genson.serialize(actionEvent);
+        stub.putStringState(eventID, sortedJson);
+
+        return actionEvent;
     }
 
     @Transaction(intent = Transaction.TYPE.SUBMIT)
@@ -159,6 +181,17 @@ public class MessageTransfer implements ContractInterface {
 
     }
 
+    @Transaction(intent = Transaction.TYPE.SUBMIT)
+    private void ChangeEventState(final Context ctx, final String eventID, ElementState eventState) {
+        //only change state
+        ChaincodeStub stub = ctx.getStub();
+        Message  msg = ReadMsg(ctx, eventID);
+        msg.setMsgState(eventState);
+        String sortedJson = genson.serialize(msg);
+        stub.putStringState(eventID, sortedJson);
+
+    }
+
     @Transaction(intent = Transaction.TYPE.EVALUATE)
     public Gateway ReadGtw(final Context ctx, final String gatewayID) {
         ChaincodeStub stub = ctx.getStub();
@@ -175,6 +208,21 @@ public class MessageTransfer implements ContractInterface {
     }
 
     @Transaction(intent = Transaction.TYPE.EVALUATE)
+    public ActionEvent ReadEvent(final Context ctx, final String eventID) {
+        ChaincodeStub stub = ctx.getStub();
+        String eventJSON = stub.getStringState(eventID);
+
+        if (eventJSON == null || eventJSON.isEmpty()) {
+            String errorMessage = String.format("Event state %s does not allowed", eventID);
+            System.out.println(errorMessage);
+            throw new ChaincodeException(errorMessage, MsgTransferErrors.EVENT_TRANSFER_FAILED.toString());
+        }
+
+        ActionEvent event = genson.deserialize(eventJSON, ActionEvent.class);
+        return event;
+    }
+
+    @Transaction(intent = Transaction.TYPE.EVALUATE)
     public boolean MsgExists(final Context ctx, final String messageID) {
         ChaincodeStub stub = ctx.getStub();
         String assetJSON = stub.getStringState(messageID);
@@ -185,94 +233,31 @@ public class MessageTransfer implements ContractInterface {
 
     //====================================================================================================================================================
 
-    @Transaction(intent = Transaction.TYPE.SUBMIT)
-    public void Msg_Message_1pam53q_Complete(final Context ctx, String  fireflyTranID) {
-        ChaincodeStub stub = ctx.getStub();
-        //TODO  待确认
-        ClientIdentity clientIdentity=ctx.getClientIdentity();
-        String mspID=clientIdentity.getMSPID();
-
-        Message msg = ReadMsg(ctx, "Message_1pam53q");
-
-        if (msg.getMsgState() != ElementState.ENABLE) {
-            String errorMessage = String.format("Msg state %s does not allowed", msg.getMessageID());
-            System.out.println(errorMessage);
-            throw new ChaincodeException(errorMessage, MsgTransferErrors.MESSAGE_TRANSFER_FAILED.toString());
-        }
-
-        msg.setMsgState(ElementState.DONE);
-        msg.setFireflyTranID(fireflyTranID);
-        String sortedJson = genson.serialize(msg);
-        stub.putStringState("Message_1pam53q", sortedJson);
-
-        Message  msg2 = ReadMsg(ctx, "Message_1rnq4x3");
-        msg2.setMsgState(ElementState.ENABLE);
-        String sortedJson2 = genson.serialize(msg2);
-        stub.putStringState("Message_1rnq4x3", sortedJson2);
-
-        Msg_Message_1rnq4x3_Complete(ctx);
-    }
-
-    @Transaction(intent = Transaction.TYPE.SUBMIT)
-    public void Msg_Message_1rnq4x3_Complete(final Context ctx) {       //还可补充消息中的参数
-        ChaincodeStub stub = ctx.getStub();
-        Message msg = ReadMsg(ctx, "Message_1rnq4x3");
-
-        if (msg.getMsgState() != ElementState.ENABLE) {
-            String errorMessage = String.format("Msg state %s does not allowed", msg.getMessageID());
-            System.out.println(errorMessage);
-            throw new ChaincodeException(errorMessage, MsgTransferErrors.MESSAGE_TRANSFER_FAILED.toString());
-        }
-
-        msg.setMsgState(ElementState.DONE);
-        msg.setFireflyTranID(mockFireflyID);
-        String sortedJson = genson.serialize(msg);
-        stub.putStringState("Message_1rnq4x3", sortedJson);
-
-//        Message  msg2 = ReadMsg(ctx, "Message_0plbqmg");
-//        msg2.setMsgState(Message.state.ENABLE);
-//        String sortedJson2 = genson.serialize(msg2);
-//        stub.putStringState("Message_0plbqmg", sortedJson2);
-        //下一个为网关
-        Gateway_Gateway_197f4ys_Complete(ctx);
-    }
-
-    @Transaction(intent = Transaction.TYPE.SUBMIT)
-    public void Msg_Message_0plbqmg_Complete(final Context ctx) {
-        ChaincodeStub stub = ctx.getStub();
-        Message msg = ReadMsg(ctx, "Message_0plbqmg");
-
-        if (msg.getMsgState() != ElementState.ENABLE) {
-            String errorMessage = String.format("Msg state %s does not allowed", msg.getMessageID());
-            System.out.println(errorMessage);
-            throw new ChaincodeException(errorMessage, MsgTransferErrors.MESSAGE_TRANSFER_FAILED.toString());
-        }
-
-        msg.setMsgState(ElementState.DONE);
-        msg.setFireflyTranID(mockFireflyID);
-        String sortedJson = genson.serialize(msg);
-        stub.putStringState("Message_0plbqmg", sortedJson);
-
-    }
-
-    //不添加默认查询
-    @Transaction(intent = Transaction.TYPE.EVALUATE)
-    private void Gateway_Gateway_197f4ys_Complete(final Context ctx) {
-        ChaincodeStub stub = ctx.getStub();
-
-        //exclusive 参数择路
-        Message  msg2 = ReadMsg(ctx, "Message_0plbqmg");
-        msg2.setMsgState(ElementState.ENABLE);
-        String sortedJson2 = genson.serialize(msg2);
-        stub.putStringState("Message_0plbqmg", sortedJson2);
-        //一个结束事件
-
-        //
-
-        Msg_Message_0plbqmg_Complete(ctx);
-    }
-
     //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    @Transaction(intent = Transaction.TYPE.SUBMIT)
+    public void StartEvent_1jtgn3j(final Context ctx) {
+        ChaincodeStub stub = ctx.getStub();
+        ActionEvent actionEvent = ReadEvent(ctx, "StartEvent_1jtgn3j");
+
+        if(actionEvent.getEventState()!=ElementState.ENABLE){
+            String errorMessage = String.format("Event state %s does not allowed", actionEvent.getEventID());
+            System.out.println(errorMessage);
+            throw new ChaincodeException(errorMessage, MsgTransferErrors.EVENT_TRANSFER_FAILED.toString());
+        }
+
+        actionEvent.setEventState(ElementState.DONE);
+        String sortedJson = genson.serialize(actionEvent);
+        stub.putStringState("StartEvent_1jtgn3j", sortedJson);
+
+        stub.setEvent("StartEvent_1jtgn3j", "Contract has been started successfully".getBytes());
+
+        Gateway gtw = ReadGtw(ctx, "ExclusiveGateway_0hs3ztq");
+        gtw.setGatewayState(ElementState.ENABLE);
+        String sortedJson2 = genson.serialize(gtw);
+        stub.putStringState("ExclusiveGateway_0hs3ztq", sortedJson2);
+
+        ExclusiveGateway_0hs3ztq(ctx);
+    }
 
     @Transaction(intent = Transaction.TYPE.SUBMIT)
     public void ExclusiveGateway_0hs3ztq(final Context ctx) {
@@ -289,6 +274,8 @@ public class MessageTransfer implements ContractInterface {
         String sortedJson = genson.serialize(gtw);
         stub.putStringState("ExclusiveGateway_0hs3ztq", sortedJson);
 
+        stub.setEvent( "ExclusiveGateway_0hs3ztq", "ExclusiveGateway_0hs3ztq has been done".getBytes());
+
         Message msg2 = ReadMsg(ctx, "Message_045i10y");
         msg2.setMsgState(ElementState.ENABLE);
         String sortedJson2 = genson.serialize(msg2);
@@ -296,9 +283,18 @@ public class MessageTransfer implements ContractInterface {
     }
 
     @Transaction(intent = Transaction.TYPE.SUBMIT)
-    public void Message_045i10y(final Context ctx) {
+    public void Message_045i10y(final Context ctx, String fireflyTranID) {
         ChaincodeStub stub = ctx.getStub();
         Message msg = ReadMsg(ctx, "Message_045i10y");
+
+        //TODO  待确认 如何确认有权限的mspid
+        ClientIdentity clientIdentity=ctx.getClientIdentity();
+        String clientMspId =clientIdentity.getMSPID();
+        if(clientMspId != msg.getsendMspID( )){
+            String errorMessage = String.format("Msp denied");
+            System.out.println(errorMessage);
+            throw new ChaincodeException(errorMessage, MsgTransferErrors.MESSAGE_TRANSFER_FAILED.toString());
+        }
 
         if(msg.getMsgState()!=ElementState.ENABLE){
             String errorMessage = String.format("Msg state %s does not allowed", msg.getMessageID());
@@ -307,9 +303,11 @@ public class MessageTransfer implements ContractInterface {
         }
 
         msg.setMsgState(ElementState.DONE);
-        msg.setFireflyTranID(mockFireflyID);
+        msg.setFireflyTranID(fireflyTranID);
         String sortedJson = genson.serialize(msg);
         stub.putStringState("Message_045i10y", sortedJson);
+
+        stub.setEvent("Message_045i10y", "Message_045i10y has been done".getBytes());
 
         Message  msg2 = ReadMsg(ctx, "Message_0r9lypd");
         msg2.setMsgState(ElementState.ENABLE);
@@ -318,9 +316,17 @@ public class MessageTransfer implements ContractInterface {
     }
 
     @Transaction(intent = Transaction.TYPE.SUBMIT)
-    public void Message_0r9lypd(final Context ctx, boolean confirm) {
+    public void Message_0r9lypd(final Context ctx, String fireflyTranID, boolean confirm) {
         ChaincodeStub stub = ctx.getStub();
         Message msg = ReadMsg(ctx, "Message_0r9lypd");
+
+        ClientIdentity clientIdentity=ctx.getClientIdentity();
+        String clientMspId =clientIdentity.getMSPID();
+        if(clientMspId != msg.getsendMspID( )){
+            String errorMessage = String.format("Msp denied");
+            System.out.println(errorMessage);
+            throw new ChaincodeException(errorMessage, MsgTransferErrors.MESSAGE_TRANSFER_FAILED.toString());
+        }
 
         if(msg.getMsgState()!=ElementState.ENABLE){
             String errorMessage = String.format("Msg state %s does not allowed", msg.getMessageID());
@@ -329,9 +335,11 @@ public class MessageTransfer implements ContractInterface {
         }
 
         msg.setMsgState(ElementState.DONE);
-        msg.setFireflyTranID(mockFireflyID);
+        msg.setFireflyTranID(fireflyTranID);
         String sortedJson = genson.serialize(msg);
         stub.putStringState("Message_0r9lypd", sortedJson);
+
+        stub.setEvent( "Message_0r9lypd", "Message_0r9lypd has been done".getBytes());
 
         currentMemory.setConfirm(confirm);
 
@@ -358,6 +366,8 @@ public class MessageTransfer implements ContractInterface {
         String sortedJson = genson.serialize(gtw);
         stub.putStringState("ExclusiveGateway_106je4z", sortedJson);
 
+        stub.setEvent( "ExclusiveGateway_106je4z", "ExclusiveGateway_106je4z has been done".getBytes());
+
         if(true == currentMemory.isConfirm()){
             Message  msg2 = ReadMsg(ctx, "Message_1em0ee4");
             msg2.setMsgState(ElementState.ENABLE);
@@ -374,9 +384,17 @@ public class MessageTransfer implements ContractInterface {
     }
 
     @Transaction(intent = Transaction.TYPE.SUBMIT)
-    public void Message_1em0ee4(final Context ctx) {
+    public void Message_1em0ee4(final Context ctx, String fireflyTranID) {
         ChaincodeStub stub = ctx.getStub();
         Message msg = ReadMsg(ctx, "Message_1em0ee4");
+
+        ClientIdentity clientIdentity=ctx.getClientIdentity();
+        String clientMspId =clientIdentity.getMSPID();
+        if(clientMspId != msg.getsendMspID( )){
+            String errorMessage = String.format("Msp denied");
+            System.out.println(errorMessage);
+            throw new ChaincodeException(errorMessage, MsgTransferErrors.MESSAGE_TRANSFER_FAILED.toString());
+        }
 
         if(msg.getMsgState()!=ElementState.ENABLE){
             String errorMessage = String.format("Msg state %s does not allowed", msg.getMessageID());
@@ -385,17 +403,27 @@ public class MessageTransfer implements ContractInterface {
         }
 
         msg.setMsgState(ElementState.DONE);
-        msg.setFireflyTranID(mockFireflyID);
+        msg.setFireflyTranID(fireflyTranID);
         String sortedJson = genson.serialize(msg);
         stub.putStringState("Message_1em0ee4", sortedJson);
+
+        stub.setEvent( "Message_1em0ee4", "Message_1em0ee4 has been done".getBytes());
 
         ChangeMsgState(ctx,"Message_1nlagx2",ElementState.ENABLE);
     }
 
     @Transaction(intent = Transaction.TYPE.SUBMIT)
-    public void Message_1nlagx2(final Context ctx) {
+    public void Message_1nlagx2(final Context ctx, String fireflyTranID) {
         ChaincodeStub stub = ctx.getStub();
         Message msg = ReadMsg(ctx, "Message_1nlagx2");
+
+        ClientIdentity clientIdentity=ctx.getClientIdentity();
+        String clientMspId =clientIdentity.getMSPID();
+        if(clientMspId != msg.getsendMspID( )){
+            String errorMessage = String.format("Msp denied");
+            System.out.println(errorMessage);
+            throw new ChaincodeException(errorMessage, MsgTransferErrors.MESSAGE_TRANSFER_FAILED.toString());
+        }
 
         if(msg.getMsgState()!=ElementState.ENABLE){
             String errorMessage = String.format("Msg state %s does not allowed", msg.getMessageID());
@@ -404,9 +432,11 @@ public class MessageTransfer implements ContractInterface {
         }
 
         msg.setMsgState(ElementState.DONE);
-        msg.setFireflyTranID(mockFireflyID);
+        msg.setFireflyTranID(fireflyTranID);
         String sortedJson = genson.serialize(msg);
         stub.putStringState("Message_1nlagx2", sortedJson);
+
+        stub.setEvent( "Message_1nlagx2", "Message_1nlagx2 has been done".getBytes());
 
         ChangeGtwState(ctx,"EventBasedGateway_1fxpmyn",ElementState.ENABLE);
 
@@ -428,14 +458,24 @@ public class MessageTransfer implements ContractInterface {
         String sortedJson = genson.serialize(gtw);
         stub.putStringState("EventBasedGateway_1fxpmyn", sortedJson);
 
+        stub.setEvent( "EventBasedGateway_1fxpmyn", "EventBasedGateway_1fxpmyn has been done".getBytes());
+
         ChangeMsgState(ctx,"Message_0o8eyir",ElementState.ENABLE);
         ChangeMsgState(ctx,"Message_1xm9dxy",ElementState.ENABLE);
     }
 
     @Transaction(intent = Transaction.TYPE.SUBMIT)
-    public void Message_0o8eyir(final Context ctx, boolean cancel) {
+    public void Message_0o8eyir(final Context ctx, boolean cancel, String fireflyTranID) {
         ChaincodeStub stub = ctx.getStub();
         Message msg = ReadMsg(ctx, "Message_0o8eyir");
+
+        ClientIdentity clientIdentity=ctx.getClientIdentity();
+        String clientMspId =clientIdentity.getMSPID();
+        if(clientMspId != msg.getsendMspID( )){
+            String errorMessage = String.format("Msp denied");
+            System.out.println(errorMessage);
+            throw new ChaincodeException(errorMessage, MsgTransferErrors.MESSAGE_TRANSFER_FAILED.toString());
+        }
 
         if(msg.getMsgState()!=ElementState.ENABLE){
             String errorMessage = String.format("Msg state %s does not allowed", msg.getMessageID());
@@ -444,14 +484,17 @@ public class MessageTransfer implements ContractInterface {
         }
 
         msg.setMsgState(ElementState.DONE);
-        msg.setFireflyTranID(mockFireflyID);
+        msg.setFireflyTranID(fireflyTranID);
         String sortedJson = genson.serialize(msg);
         stub.putStringState("Message_0o8eyir", sortedJson);
+
+        stub.setEvent( "Message_0o8eyir", "Message_0o8eyir has been done".getBytes());
 
         ChangeMsgState(ctx,"Message_1xm9dxy",ElementState.DISABLE);
         ChangeGtwState( ctx,"ExclusiveGateway_0nzwv7v",ElementState.ENABLE);
 
-        //中间transfer过程设计以太币先省略，直接跳到网关
+        //中间transfer两个消息交换过程设计以太币先省略，直接跳到网关
+
         currentMemory.setCancel(cancel);
 
         ExclusiveGateway_0nzwv7v(ctx);
@@ -472,6 +515,8 @@ public class MessageTransfer implements ContractInterface {
         String sortedJson = genson.serialize(gtw);
         stub.putStringState("ExclusiveGateway_0nzwv7v", sortedJson);
 
+        stub.setEvent( "ExclusiveGateway_0nzwv7v", "ExclusiveGateway_0nzwv7v has been done".getBytes());
+
         if(true == currentMemory.isCancel()){
             Message  msg2 = ReadMsg(ctx, "Message_1joj7ca");
             msg2.setMsgState(ElementState.ENABLE);
@@ -479,13 +524,27 @@ public class MessageTransfer implements ContractInterface {
             stub.putStringState("Message_1joj7ca", sortedJson2);
         } else {
             //done
+            ActionEvent event = ReadEvent( ctx, "EndEvent_08edp7f");
+            event.setEventState(ElementState.ENABLE);
+            String sortedJson2 = genson.serialize(event);
+            stub.putStringState("EndEvent_08edp7f", sortedJson2);
+
+            EndEvent_08edp7f(ctx);
         }
     }
 
     @Transaction(intent = Transaction.TYPE.SUBMIT)
-    public void Message_1joj7ca(final Context ctx) {
+    public void Message_1joj7ca(final Context ctx, String fireflyTranID) {
         ChaincodeStub stub = ctx.getStub();
         Message msg = ReadMsg(ctx, "Message_1joj7ca");
+
+        ClientIdentity clientIdentity=ctx.getClientIdentity();
+        String clientMspId =clientIdentity.getMSPID();
+        if(clientMspId != msg.getsendMspID( )){
+            String errorMessage = String.format("Msp denied");
+            System.out.println(errorMessage);
+            throw new ChaincodeException(errorMessage, MsgTransferErrors.MESSAGE_TRANSFER_FAILED.toString());
+        }
 
         if(msg.getMsgState()!=ElementState.ENABLE){
             String errorMessage = String.format("Msg state %s does not allowed", msg.getMessageID());
@@ -494,18 +553,28 @@ public class MessageTransfer implements ContractInterface {
         }
 
         msg.setMsgState(ElementState.DONE);
-        msg.setFireflyTranID(mockFireflyID);
+        msg.setFireflyTranID(fireflyTranID);
         String sortedJson = genson.serialize(msg);
         stub.putStringState("Message_1joj7ca", sortedJson);
+
+        stub.setEvent( "Message_1joj7ca", "Message_1joj7ca has been done".getBytes());
 
         ChangeMsgState(ctx,"Message_1etcmvl",ElementState.ENABLE);
     }
 
     @Transaction(intent = Transaction.TYPE.SUBMIT)
-    public void Message_1etcmvl(final Context ctx) {
+    public void Message_1etcmvl(final Context ctx, String fireflyTranID) {
         ChaincodeStub stub = ctx.getStub();
         Message msg = ReadMsg(ctx, "Message_1etcmvl");
 
+        ClientIdentity clientIdentity=ctx.getClientIdentity();
+        String clientMspId =clientIdentity.getMSPID();
+        if(clientMspId != msg.getsendMspID( )){
+            String errorMessage = String.format("Msp denied");
+            System.out.println(errorMessage);
+            throw new ChaincodeException(errorMessage, MsgTransferErrors.MESSAGE_TRANSFER_FAILED.toString());
+        }
+
         if(msg.getMsgState()!=ElementState.ENABLE){
             String errorMessage = String.format("Msg state %s does not allowed", msg.getMessageID());
             System.out.println(errorMessage);
@@ -513,17 +582,33 @@ public class MessageTransfer implements ContractInterface {
         }
 
         msg.setMsgState(ElementState.DONE);
-        msg.setFireflyTranID(mockFireflyID);
+        msg.setFireflyTranID(fireflyTranID);
         String sortedJson = genson.serialize(msg);
         stub.putStringState("Message_1etcmvl", sortedJson);
 
+        stub.setEvent( "Message_1etcmvl", "Message_1etcmvl has been done".getBytes());
+
         //done
+        ActionEvent event = ReadEvent( ctx, "EndEvent_146eii4");
+        event.setEventState(ElementState.ENABLE);
+        String sortedJson2 = genson.serialize(event);
+        stub.putStringState("EndEvent_146eii4", sortedJson2);
+
+        EndEvent_146eii4(ctx);
     }
 
     @Transaction(intent = Transaction.TYPE.SUBMIT)
-    public void Message_1xm9dxy(final Context ctx) {
+    public void Message_1xm9dxy(final Context ctx, String fireflyTranID) {
         ChaincodeStub stub = ctx.getStub();
         Message msg = ReadMsg(ctx, "Message_1xm9dxy");
+
+        ClientIdentity clientIdentity=ctx.getClientIdentity();
+        String clientMspId =clientIdentity.getMSPID();
+        if(clientMspId != msg.getsendMspID( )){
+            String errorMessage = String.format("Msp denied");
+            System.out.println(errorMessage);
+            throw new ChaincodeException(errorMessage, MsgTransferErrors.MESSAGE_TRANSFER_FAILED.toString());
+        }
 
         if(msg.getMsgState()!=ElementState.ENABLE){
             String errorMessage = String.format("Msg state %s does not allowed", msg.getMessageID());
@@ -531,12 +616,75 @@ public class MessageTransfer implements ContractInterface {
             throw new ChaincodeException(errorMessage, MsgTransferErrors.MESSAGE_TRANSFER_FAILED.toString());
         }
 
-        msg.setMsgState(ElementState.DONE);
-        msg.setFireflyTranID(mockFireflyID);
+        msg.setMsgState(ElementState.ENABLE);
+        msg.setFireflyTranID(fireflyTranID);
         String sortedJson = genson.serialize(msg);
         stub.putStringState("Message_1xm9dxy", sortedJson);
 
+        stub.setEvent( "Message_1xm9dxy", "Message_1xm9dxy has been done".getBytes());
+
         //done
+        ActionEvent event = ReadEvent( ctx, "EndEvent_0366pfz");
+        event.setEventState(ElementState.ENABLE);
+        String sortedJson2 = genson.serialize(event);
+        stub.putStringState("EndEvent_0366pfz", sortedJson2);
+
+        EndEvent_0366pfz(ctx);
+    }
+
+    @Transaction(intent = Transaction.TYPE.SUBMIT)
+    public void EndEvent_08edp7f(final Context ctx) {
+        ChaincodeStub stub = ctx.getStub();
+        ActionEvent event = ReadEvent(ctx, "EndEvent_08edp7f");
+
+        if(event.getEventState()!=ElementState.ENABLE){
+            String errorMessage = String.format("Event state %s does not allowed", event.getEventID());
+            System.out.println(errorMessage);
+            throw new ChaincodeException(errorMessage, MsgTransferErrors.EVENT_TRANSFER_FAILED.toString());
+        }
+
+        event.setEventState(ElementState.DONE);
+        String sortedJson = genson.serialize(event);
+        stub.putStringState("EndEvent_08edp7f", sortedJson);
+
+        stub.setEvent( "EndEvent_08edp7f", "EndEvent_08edp7f has been done".getBytes());
+    }
+
+    @Transaction(intent = Transaction.TYPE.SUBMIT)
+    public void EndEvent_146eii4(final Context ctx) {
+        ChaincodeStub stub = ctx.getStub();
+        ActionEvent event = ReadEvent(ctx, "EndEvent_146eii4");
+
+        if(event.getEventState()!=ElementState.ENABLE){
+            String errorMessage = String.format("Event state %s does not allowed", event.getEventID());
+            System.out.println(errorMessage);
+            throw new ChaincodeException(errorMessage, MsgTransferErrors.EVENT_TRANSFER_FAILED.toString());
+        }
+
+        event.setEventState(ElementState.DONE);
+        String sortedJson = genson.serialize(event);
+        stub.putStringState("EndEvent_146eii4", sortedJson);
+
+        stub.setEvent( "EndEvent_146eii4", "EndEvent_146eii4 has been done".getBytes());
+
+    }
+
+    @Transaction(intent = Transaction.TYPE.SUBMIT)
+    public void EndEvent_0366pfz(final Context ctx) {
+        ChaincodeStub stub = ctx.getStub();
+        ActionEvent event = ReadEvent(ctx, "EndEvent_0366pfz");
+
+        if(event.getEventState()!=ElementState.ENABLE){
+            String errorMessage = String.format("Event state %s does not allowed", event.getEventID());
+            System.out.println(errorMessage);
+            throw new ChaincodeException(errorMessage, MsgTransferErrors.EVENT_TRANSFER_FAILED.toString());
+        }
+
+        event.setEventState(ElementState.DONE);
+        String sortedJson = genson.serialize(event);
+        stub.putStringState("EndEvent_0366pfz", sortedJson);
+
+        stub.setEvent( "EndEvent_0366pfz", "EndEvent_0366pfz has been done".getBytes());
     }
 
 }
